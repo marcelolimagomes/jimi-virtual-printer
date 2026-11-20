@@ -9,7 +9,7 @@ jobs:
   package-and-smoke:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Debian build and smoke dependencies
         run: |
@@ -30,7 +30,7 @@ jobs:
           python3 /usr/libexec/posvirtual/smoke-deb.py artifacts/github-actions
 
       - name: Publish package artifact for this CI run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: posvirtual-debian-package
           path: |
