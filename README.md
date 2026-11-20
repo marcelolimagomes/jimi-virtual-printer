@@ -73,7 +73,7 @@ sudo apt-get install build-essential debhelper dh-python dpkg-dev python3-pil py
 scripts/build-deb.sh
 ```
 
-O workflow `.woodpecker.yml` roda testes, build Debian e smoke test do pacote instalado em eventos `push`, `pull_request` e `tag`. O workflow GitHub Actions `ci.yml` faz a mesma validação e deixa o `.deb` e o checksum disponíveis como artefato daquela execução; cupons RAW não são enviados.
+O workflow `.woodpecker.yml` roda testes, build Debian e smoke test do pacote instalado em eventos `push`, `pull_request`, `tag` e `manual`. O workflow GitHub Actions `ci.yml` faz a mesma validação e deixa o `.deb` e o checksum disponíveis como artefato daquela execução; cupons RAW não são enviados.
 
 Instale o pacote com `apt-get install ./posvirtual_0.1.1-1_all.deb`. Em hosts com systemd, o serviço escuta em `127.0.0.1:9100` e grava em `/var/lib/posvirtual`. Se já houver uma instância do protótipo usando a porta, libere a porta antes de iniciar o serviço do pacote. Para a fila gráfica CUPS, use o Modo 2.
 
