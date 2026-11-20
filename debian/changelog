@@ -1,0 +1,7 @@
+posvirtual (0.1.1-1) unstable; urgency=medium
+
+  * Package the TCP printer and systemd unit for Debian and Ubuntu.
+  * Emit receipts after each cut and include the receipt font.
+  * Draw ReportLab barcodes via Pillow and the bundled font.
+
+ -- Marcelo Lima Gomes <marcelolimagomes@gmail.com>  Thu, 19 Nov 2026 13:10:56 -0300

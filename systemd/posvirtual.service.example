@@ -1,0 +1,17 @@
+[Unit]
+Description=POStech Virtual ESC/POS TCP 9100 (user service)
+After=network.target
+
+[Service]
+Type=simple
+# Exemplo: instale o projeto em ~/posvirtual-prototype e execute python -m venv .venv.
+WorkingDirectory=%h/posvirtual-prototype
+ExecStart=%h/posvirtual-prototype/.venv/bin/python -m posvirtual --host 127.0.0.1 --port 9100 --output %h/PDF --paper-mm 80
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=%h/PDF
+
+[Install]
+WantedBy=default.target

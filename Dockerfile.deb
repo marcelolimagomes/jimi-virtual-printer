@@ -1,0 +1,14 @@
+# Build context: directory containing the verified posvirtual .deb and SHA-256.
+FROM debian:bookworm-slim
+ARG POSVIRTUAL_DEB=posvirtual_0.1.1-1_all.deb
+COPY ${POSVIRTUAL_DEB} ${POSVIRTUAL_DEB}.sha256 /tmp/
+RUN cd /tmp \
+    && sha256sum -c "${POSVIRTUAL_DEB}.sha256" \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "./${POSVIRTUAL_DEB}" \
+    && rm -rf /var/lib/apt/lists/* "${POSVIRTUAL_DEB}" "${POSVIRTUAL_DEB}.sha256" \
+    && install -d -o 10001 -g 10001 -m 0700 /prints
+USER 10001:10001
+ENV POSVIRTUAL_HOST=0.0.0.0 POSVIRTUAL_OUTPUT=/prints
+HEALTHCHECK --interval=2s --timeout=2s --retries=15 CMD ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 9100), 1).close()"]
+ENTRYPOINT ["/usr/bin/posvirtual"]

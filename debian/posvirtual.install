@@ -1,0 +1,4 @@
+posvirtual/*.py usr/lib/python3/dist-packages/posvirtual/
+posvirtual/assets/* usr/lib/python3/dist-packages/posvirtual/assets/
+scripts/posvirtual usr/bin/
+scripts/smoke-deb.py usr/libexec/posvirtual/

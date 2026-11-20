@@ -1,0 +1,17 @@
+[Unit]
+Description=POStech Virtual ESC/POS printer
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/posvirtual --output /var/lib/posvirtual
+DynamicUser=yes
+StateDirectory=posvirtual
+StateDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

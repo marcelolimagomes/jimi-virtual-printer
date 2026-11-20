@@ -1,0 +1,10 @@
+services:
+  posvirtual:
+    build: .
+    ports:
+      - "127.0.0.1:9100:9100"  # acesso restrito ao host; exponha na rede conscientemente
+    volumes:
+      - ./artifacts:/prints
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

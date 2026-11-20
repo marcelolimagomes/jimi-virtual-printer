@@ -1,0 +1,40 @@
+name: POS Virtual package CI
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  package-and-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Debian build and smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper dh-python dpkg-dev \
+            python3 python3-pil python3-pytest python3-qrcode python3-reportlab \
+            poppler-utils zbar-tools
+
+      - name: Test and build Debian package
+        run: |
+          python3 -m pytest -q
+          scripts/build-deb.sh
+
+      - name: Install and smoke-test package
+        run: |
+          sudo apt-get install -y --no-install-recommends ./dist/posvirtual_*.deb
+          python3 /usr/libexec/posvirtual/smoke-deb.py artifacts/github-actions
+
+      - name: Publish package artifact for this CI run
+        uses: actions/upload-artifact@v4
+        with:
+          name: posvirtual-debian-package
+          path: |
+            dist/*.deb
+            dist/*.deb.sha256
+          if-no-files-found: error
+          retention-days: 30
