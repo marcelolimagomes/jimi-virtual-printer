@@ -7,8 +7,11 @@ import json
 import logging
 import os
 from pathlib import Path
+import threading
 import uuid
+from . import APP_NAME, APP_WEBSITE, __version__
 from .escpos import EscPosParser, Receipt
+from .paths import default_output_dir
 from .render import render_receipt
 
 LOG = logging.getLogger("posvirtual")
@@ -125,23 +128,46 @@ class PrinterServer:
             LOG.exception("Falha ao renderizar %s", base)
         _write_metadata(self.output_dir / f"{base}.json", meta)
 
-    async def serve(self, host: str, port: int):
+    async def serve(
+        self,
+        host: str,
+        port: int,
+        stop_event: threading.Event | None = None,
+        started_event: threading.Event | None = None,
+    ):
         server = await asyncio.start_server(self.handle, host, port)
         bound_port = server.sockets[0].getsockname()[1]
         LOG.info("Emulador ESC/POS em %s:%s, pasta: %s", host, bound_port, self.output_dir)
+        if started_event is not None:
+            started_event.set()
         async with server:
-            await server.serve_forever()
+            if stop_event is None:
+                await server.serve_forever()
+            else:
+                await asyncio.to_thread(stop_event.wait)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Impressora virtual POStech ESC/POS TCP")
+    parser = argparse.ArgumentParser(
+        prog="POSvirtual",
+        description=f"{APP_NAME} da Taskblu: impressora virtual ESC/POS com saída PDF.",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__} — {APP_WEBSITE}")
     parser.add_argument("--host",default=os.environ.get("POSVIRTUAL_HOST","127.0.0.1"))
     parser.add_argument("--port",type=int,default=int(os.environ.get("POSVIRTUAL_PORT","9100")))
     parser.add_argument("--paper-mm",type=int, choices=[58,80],default=int(os.environ.get("POSVIRTUAL_PAPER_MM","80")))
-    parser.add_argument("--output",type=Path,default=Path(os.environ.get("POSVIRTUAL_OUTPUT","~/PDF")))
+    parser.add_argument("--output",type=Path,default=default_output_dir())
     parser.add_argument("--max-bytes",type=int, default=8_000_000)
+    parser.add_argument("--log-file",type=Path,help="gravar logs em arquivo (útil em execução sem console)")
     opts = parser.parse_args()
-    logging.basicConfig(level=logging.INFO,format="%(asctime)s %(levelname)s %(message)s")
+    log_format = "%(asctime)s %(levelname)s %(message)s"
+    if opts.log_file:
+        opts.log_file.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(
+            filename=opts.log_file, encoding="utf-8", level=logging.INFO, format=log_format
+        )
+    else:
+        logging.basicConfig(level=logging.INFO,format=log_format)
     asyncio.run(PrinterServer(opts.output,opts.paper_mm,opts.max_bytes).serve(opts.host,opts.port))
 
 if __name__ == "__main__": main()

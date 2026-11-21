@@ -1,4 +1,6 @@
-POS Virtual is demonstration code. See README.md.
+POSvirtual original source code:
+Copyright © 2026 Taskblu. All rights reserved.
+Website and support: https://www.taskblu.com/.
 
-DejaVu Sans Mono is provided under the notices and terms in
-/usr/lib/python3/dist-packages/posvirtual/assets/DejaVu-LICENSE.txt.
+The bundled DejaVu Sans Mono font remains under its original terms. The full
+notice is provided in posvirtual/assets/DejaVu-LICENSE.txt.

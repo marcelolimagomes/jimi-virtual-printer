@@ -1,5 +1,5 @@
 [Unit]
-Description=POStech Virtual ESC/POS printer
+Description=Taskblu POSvirtual ESC/POS printer
 After=network.target
 
 [Service]

@@ -50,7 +50,7 @@ jobs:
           checksum="$package.sha256"
           notes="dist/release-notes.md"
           cat > "$notes" <<EOF
-          POS Virtual ${version} Debian package for Debian 12+ and Ubuntu.
+          Taskblu POSvirtual ${version} Debian package for Debian 12+ and Ubuntu.
 
           Download the Debian package and its checksum, then verify with:
 
@@ -64,6 +64,6 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" "$package" "$checksum" \
               --verify-tag \
-              --title "POS Virtual ${version}" \
+              --title "Taskblu POSvirtual ${version}" \
               --notes-file "$notes"
           fi

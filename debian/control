@@ -13,6 +13,7 @@ Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends}, python3 (>= 3.11~),
  python3-pil (>= 9.4), python3-qrcode (>= 7.4),
  python3-reportlab (>= 3.6.12)
-Description: Virtual ESC/POS receipt printer for test environments
+Description: Taskblu POSvirtual thermal receipt printer
  Receives ESC/POS jobs over TCP and saves each receipt as a PDF with
  JSON metadata and a shared raw capture for the connection.
+Suggests: python3-gi, gir1.2-ayatanaappindicator3-0.1, libnotify-bin

@@ -1,4 +1,4 @@
-name: POS Virtual package CI
+name: Taskblu POSvirtual Ubuntu package CI
 
 on: [push, pull_request, workflow_dispatch]
 

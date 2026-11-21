@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=POSvirtual — Taskblu
+Comment=Impressora térmica virtual; notificações e abertura de PDFs
+Exec=posvirtual-tray
+Icon=printer
+Terminal=false
+Categories=Utility;Office;
+StartupNotify=false

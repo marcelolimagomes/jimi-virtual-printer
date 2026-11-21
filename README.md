@@ -1,10 +1,16 @@
-# POS Virtual — protótipo de impressora térmica virtual Ubuntu/CI
+# POSvirtual — impressora térmica virtual Taskblu para Windows e Ubuntu
 
-**Versão:** 0.1.1 (prova de conceito)
+**Versão:** 0.1.2
+
+**Propriedade:** Taskblu — [www.taskblu.com](https://www.taskblu.com/)
+
+**Suporte:** [www.taskblu.com](https://www.taskblu.com/)
+
+**Copyright:** © 2026 Taskblu. Todos os direitos reservados. Consulte [COPYRIGHT.md](COPYRIGHT.md) e os avisos de terceiros da fonte incluída.
 
 **Perfil de referência:** POStech ÍRIS POS200C (não oficial, compatibilidade PARCIAL com ESC/POS).
 
-**Licença:** código de demonstração, sem associação com a POStech.
+**Produto Taskblu:** a impressora virtual recebe ESC/POS por TCP e gera PDF/JSON/RAW. O perfil POStech indicado é apenas uma referência parcial; este aplicativo não é um driver oficial POStech.
 
 ## Objetivo e caminhos de impressão
 
@@ -13,16 +19,45 @@ Existem dois meios independentes de enviar uma impressão:
 | Entrada | Como o aplicativo enxerga | Como vira PDF | Diretório |
 |---|---|---|---|
 | **CUPS 2.x / IPP** | Fila de sistema `POStech_Virtual`, aparece no diálogo de impressão / `lpstat`, acessível via IPP local | CUPS-PDF converte PDFs/PostScript/documentos | `~/PDF` do usuário do job (padrão do pacote) |
-| **ESC/POS / TCP RAW** | Impressora de rede com IP e porta **9100**, ex.: `127.0.0.1:9100` | Interpretador de subset ESC/POS + renderizador Pillow para PDF | `POSVIRTUAL_OUTPUT` (`~/PDF` por padrão; `/prints` no Docker) |
+| **ESC/POS / TCP RAW** | Impressora de rede com IP e porta **9100**, ex.: `127.0.0.1:9100` | Interpretador de subset ESC/POS + renderizador Pillow para PDF | `POSVIRTUAL_OUTPUT` (`~/PDF` no Ubuntu; `%LOCALAPPDATA%\Taskblu\POSvirtual\PDF` no Windows; `/prints` no Docker) |
 
 **Importante:** as portas/interfaces são distintas. A fila CUPS-PDF não aceita automaticamente ESC/POS em formato bruto, e a porta TCP 9100 não interpreta PDF/PostScript. O nome da fila não faz com que o Linux crie um dispositivo USB com VID/PID POStech. Clientes exclusivamente USB exigem um módulo adicional de emulação USB gadget/USB/IP/driver.
 
 ## Requisitos
 
-- Ubuntu 24.04/26.04, Debian 12+ ou Linux com Python 3.11+. A fonte DejaVu Sans Mono acompanha o motor.
+- Windows 10/11 64-bit ou Ubuntu 24.04/26.04, Debian 12+ com Python 3.11+ para execução pelo código-fonte.
 - Para TCP: Python, Pillow, qrcode e reportlab.
+- Para a bandeja no Windows: dependências de `packaging/windows/requirements.txt` (`pystray`).
+- Para a bandeja no Ubuntu GNOME: `python3-gi`, `gir1.2-ayatanaappindicator3-0.1` e `libnotify-bin`.
 - Para CUPS: `cups`, `cups-client`, `printer-driver-cups-pdf` (distribuição com CUPS 2.x/PPD clássico). Não usar sobre CUPS 3 sem adaptar a implementação.
 - Para Docker: Docker Engine + Docker Compose.
+
+## Windows 10/11 64-bit
+
+Quando gerado pelo workflow, o instalador por usuário `POSvirtual-Setup-0.1.2.exe` instala o servidor e o agente de bandeja. O agente inicia o servidor TCP em `127.0.0.1:9100`, acompanha `%LOCALAPPDATA%\Taskblu\POSvirtual\PDF` e oferece ações para iniciar/parar o servidor, **Abrir PDF mais recente**, ver o **Histórico de PDFs** com data/hora, consultar informações do produto e abrir o site de suporte. Os logs ficam em `%LOCALAPPDATA%\Taskblu\POSvirtual\logs`. No Windows, o transporte implementado é ESC/POS sobre TCP; a integração CUPS/IPP deste repositório é para Ubuntu. O instalador cria atalhos no menu Iniciar e, por padrão, na inicialização da sessão. É possível desmarcar a inicialização automática durante a instalação.
+
+O workflow `.github/workflows/windows-exe.yml` gera o instalador em um runner Windows e publica o `.exe` como artefato da execução. Para gerar localmente, use uma máquina Windows com Python 3.12 e Inno Setup 6:
+
+```powershell
+choco install innosetup --yes
+./packaging/windows/build.ps1
+```
+
+Para executar pelo código-fonte em PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install -r packaging/windows/requirements.txt
+python -m posvirtual.tray_agent
+```
+
+O agente usa `127.0.0.1` por padrão. Se o emissor estiver em outra máquina, configure a interface de rede e o firewall conscientemente; não exponha a porta 9100 à internet.
+
+## Ubuntu
+
+O pacote Debian instala o servidor TCP e o lançador gráfico opcional. O agente Linux mostra o menu **Sobre POSvirtual** com proprietário, versão, copyright e suporte Taskblu. Para imprimir localmente, configure o emissor como impressora de rede ESC/POS em `127.0.0.1:9100`. O caminho CUPS/IPP é independente do servidor TCP.
 
 ## Modo 1: porta TCP 9100 em Ubuntu, sem sudo
 
@@ -46,6 +81,16 @@ Configure a aplicação de origem como impressora de rede TCP/IP `127.0.0.1`, po
 
 **O que se grava:** um `.pdf` e um `.json` por cupom, além do `.bin` original por conexão. Cada corte ESC/POS publica seu cupom com o socket ainda aberto. O RAW continua recebendo os bytes da conexão até seu fim. O encerramento salva o cupom restante, mesmo sem corte. Use o JSON como sinal de processamento do cupom e verifique `result` antes de consumir o PDF.
 
+### Agente de bandeja e notificações
+
+No Ubuntu com GNOME, instale as dependências gráficas e execute `posvirtual-tray --output "$HOME/PDF"`. O ícone da POSvirtual notifica cada cupom ESC/POS publicado e novos PDFs diretos do CUPS-PDF. O menu oferece **Abrir PDF mais recente** e **Histórico de PDFs**, uma janela ordenada por data/hora com opção para abrir o item selecionado. **Sobre POSvirtual** mostra versão, Taskblu, copyright e suporte. O agente acompanha novas impressões depois que inicia; o histórico também lista PDFs já existentes.
+
+O pacote Debian inclui o comando e um lançador no menu de aplicativos. O suporte gráfico é opcional: em ambientes sem desktop, o serviço de impressão continua funcionando sem esses pacotes. Para iniciar o agente ao entrar na sessão, adicione `posvirtual-tray --output /caminho/da/pasta` aos aplicativos de inicialização do usuário. Use a mesma pasta de saída do servidor ESC/POS ou do CUPS-PDF.
+
+O evento ESC/POS usa o JSON final, publicado atomicamente após o PDF. O CUPS-PDF não gera esses metadados; nesse caso o agente espera o arquivo PDF parar de mudar antes de notificar. O serviço Debian de sistema grava por padrão em `/var/lib/posvirtual`, com acesso privado ao usuário dinâmico do systemd. Para notificações na sessão gráfica, use o serviço `systemd --user` com uma pasta do próprio usuário, ou configure deliberadamente um destino compartilhado com permissões apropriadas. No host atual, a instância `systemd --user` já grava em `~/.local/state/posvirtual/wintest-jimi`.
+
+No Windows, a bandeja usa o backend Win32 do `pystray` e notificações do sistema. No Ubuntu, usa GTK/Ayatana AppIndicator e `notify-send`. Os frontends são específicos de cada desktop; o motor Python ESC/POS, renderizador e formato dos arquivos permanecem compartilhados.
+
 ## Modo 2: criar impressora normal do Ubuntu (CUPS)
 
 ```bash
@@ -66,7 +111,7 @@ Para verificar o destino e personalizar a saída da fila CUPS, inspecione `/etc/
 
 ### Pacote Debian e pipeline Woodpecker
 
-O pacote `posvirtual_0.1.1-1_all.deb` instala o motor TCP, sua fonte e a unidade systemd. Em Debian 12, instale as dependências de build pela distribuição e gere o pacote e seu checksum:
+O pacote `posvirtual_0.1.2-1_all.deb` instala o motor TCP, sua fonte, os avisos de copyright, a unidade systemd e o lançador da bandeja. Em Debian 12, instale as dependências de build pela distribuição e gere o pacote e seu checksum:
 
 ```bash
 sudo apt-get install build-essential debhelper dh-python dpkg-dev python3-pil python3-pytest python3-qrcode python3-reportlab
@@ -75,22 +120,22 @@ scripts/build-deb.sh
 
 O workflow `.woodpecker.yml` roda testes, build Debian e smoke test do pacote instalado em eventos `push`, `pull_request`, `tag` e `manual`. O workflow GitHub Actions `ci.yml` faz a mesma validação e deixa o `.deb` e o checksum disponíveis como artefato daquela execução; cupons RAW não são enviados.
 
-Instale o pacote com `apt-get install ./posvirtual_0.1.1-1_all.deb`. Em hosts com systemd, o serviço escuta em `127.0.0.1:9100` e grava em `/var/lib/posvirtual`. Se já houver uma instância do protótipo usando a porta, libere a porta antes de iniciar o serviço do pacote. Para a fila gráfica CUPS, use o Modo 2.
+Instale o pacote com `apt-get install ./posvirtual_0.1.2-1_all.deb`. Em hosts com systemd, o serviço escuta em `127.0.0.1:9100` e grava em `/var/lib/posvirtual`. Se já houver uma instância do servidor usando a porta, libere a porta antes de iniciar o serviço do pacote. Para a fila gráfica CUPS, use o Modo 2.
 
 ### Publicar uma versão no GitHub
 
-O número do release corresponde à versão Debian completa de `debian/changelog`. Para a versão atual, crie e envie a tag `v0.1.1-1`:
+O número do release corresponde à versão Debian completa de `debian/changelog`. Para a versão atual, crie e envie a tag `v0.1.2-1`:
 
 ```bash
-git tag v0.1.1-1
-git push origin v0.1.1-1
+git tag v0.1.2-1
+git push origin v0.1.2-1
 ```
 
-O workflow `.github/workflows/release.yml` reconstrói e valida o pacote, depois publica `posvirtual_0.1.1-1_all.deb` e `posvirtual_0.1.1-1_all.deb.sha256` nos assets do GitHub Release. O pacote e o checksum podem ser baixados com:
+O workflow `.github/workflows/release.yml` reconstrói e valida o pacote, depois publica `posvirtual_0.1.2-1_all.deb` e `posvirtual_0.1.2-1_all.deb.sha256` nos assets do GitHub Release. O pacote e o checksum podem ser baixados com:
 
 ```bash
-gh release download v0.1.1-1 --pattern 'posvirtual_0.1.1-1_all.deb*'
-sha256sum -c posvirtual_0.1.1-1_all.deb.sha256
+gh release download v0.1.2-1 --pattern 'posvirtual_0.1.2-1_all.deb*'
+sha256sum -c posvirtual_0.1.2-1_all.deb.sha256
 ```
 
 Em um step ou container E2E, execute em primeiro plano e aponte o emissor para o endereço do processo. Use `127.0.0.1` para um emissor no mesmo container. Para containers distintos, use `--host 0.0.0.0` e o nome do serviço na rede privada da campanha.
@@ -169,6 +214,15 @@ Limitações adicionais: o servidor não implementa descobrimento mDNS/Bonjour, 
 
 **V3 (se necessário):** dispositivo serial PTY, emulação USB Gadget/USB/IP em host compatível, integração OPOS/JPOS, mDNS/DNS-SD e gestão de múltiplas impressoras (Balcão/Cozinha/Expedição).
 
+## Proposta técnica de melhorias para o usuário
+
+1. **Assistente de configuração e estado do serviço:** configurar endereço, porta, papel e pasta de saída; validar conflito de porta; exibir se o servidor está ativo. Persistir em um arquivo de configuração por usuário (`%APPDATA%\Taskblu\POSvirtual` no Windows e `$XDG_CONFIG_HOME/taskblu` no Ubuntu). A interface pode continuar usando os menus nativos já adotados, sem adicionar um framework gráfico grande.
+2. **Impressão de teste e organização do histórico:** item “Imprimir página de teste” que envia um cupom ESC/POS conhecido ao próprio serviço; acrescentar busca/filtros e abrir a pasta a partir do histórico já implementado. Adicionar uma política configurável de retenção para PDFs e RAW.
+3. **Perfis de impressora:** salvar destinos separados (Caixa, Cozinha, Expedição), cada um com porta, papel e diretório próprios. Requer múltiplas instâncias do servidor ou um gerenciador de servidores no agente.
+4. **Diagnóstico seguro:** informar erros de porta/permissão, oferecer acesso aos logs locais e gerar um pacote de diagnóstico sem incluir o conteúdo RAW por padrão.
+
+**Ordem sugerida:** começar por configuração/estado e impressão de teste; histórico/retention vem em seguida; perfis múltiplos e diagnóstico exportável ficam para uma versão posterior. Manter a escuta em `127.0.0.1` como padrão e exigir configuração explícita para aceitar conexões remotas.
+
 ## Referências
 
 - POStech ÍRIS POS200C: https://www.postech.com.br/produto/46/impressora-iris-pos200c
@@ -199,4 +253,4 @@ Se instalar em outro diretório, adapte `WorkingDirectory` e `ExecStart`. O serv
 - Se emissor estiver no **host Ubuntu**, aponte para `127.0.0.1:9100` (porta publicada no Compose).
 - Se emissor estiver em **outro container ou host**, não use `127.0.0.1` como se fosse o host da impressora; configure rede adequada e isolamento.
 
-Em um futuro build PyInstaller para Windows, inclua `posvirtual/assets` no mesmo caminho do bundle e colete `reportlab.graphics.barcode`. O motor resolve a fonte relativa ao módulo.
+O build Windows usa PyInstaller em runner Windows, inclui `posvirtual/assets` e coleta os módulos dinâmicos de `reportlab.graphics.barcode`. O instalador Inno Setup mantém os dados do usuário fora da pasta de instalação.

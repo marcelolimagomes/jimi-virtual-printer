@@ -1,0 +1,12 @@
+#!/usr/bin/python3
+"""Entry point para o agente gráfico opcional POSvirtual."""
+from pathlib import Path
+import sys
+
+project_root = Path(__file__).resolve().parent.parent
+if (project_root / "posvirtual").is_dir():
+    sys.path.insert(0, str(project_root))
+
+from posvirtual.tray_agent import main
+
+raise SystemExit(main())

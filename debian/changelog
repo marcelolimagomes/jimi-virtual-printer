@@ -1,3 +1,19 @@
+posvirtual (0.1.2-1) unstable; urgency=medium
+
+  * Add Taskblu ownership, product information, support link, and copyright.
+  * Add Windows tray frontend and PyInstaller/Inno Setup packaging workflow.
+  * Add a searchable PDF history popup with local date and time.
+  * Document Windows and Ubuntu support and the proposed user-facing roadmap.
+
+ -- Marcelo Lima Gomes <marcelolimagomes@gmail.com>  Sat, 21 Nov 2026 12:48:18 -0300
+
+posvirtual (0.1.1-2) unstable; urgency=medium
+
+  * Add an optional tray agent with notifications and a latest-PDF menu action.
+  * Install the tray launcher and desktop application entry.
+
+ -- Marcelo Lima Gomes <marcelolimagomes@gmail.com>  Sat, 21 Nov 2026 12:13:21 -0300
+
 posvirtual (0.1.1-1) unstable; urgency=medium
 
   * Package the TCP printer and systemd unit for Debian and Ubuntu.
