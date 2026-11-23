@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    outputs:
+      package-version: ${{ steps.package.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -50,7 +52,7 @@ jobs:
           checksum="$package.sha256"
           notes="dist/release-notes.md"
           cat > "$notes" <<EOF
-          Taskblu POSvirtual ${version} Debian package for Debian 12+ and Ubuntu.
+          Taskblu POSvirtual ${version} installers for Debian/Ubuntu and Windows 10/11.
 
           Download the Debian package and its checksum, then verify with:
 
@@ -67,3 +69,44 @@ jobs:
               --title "Taskblu POSvirtual ${version}" \
               --notes-file "$notes"
           fi
+
+  windows-installer:
+    needs: release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer matching the release tag
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ needs.release.outputs.package-version }}
+        run: |
+          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          if ($tagVersion -ne $env:PACKAGE_VERSION) {
+            throw "Tag $env:GITHUB_REF_NAME precisa corresponder ao changelog: v$env:PACKAGE_VERSION"
+          }
+          $appVersion = $env:PACKAGE_VERSION -replace '-\d+$', ''
+          ./packaging/windows/build.ps1 -AppVersion $appVersion
+
+      - name: Publish Windows installer and checksum to GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installers = @(Get-ChildItem 'dist/windows/installer/POSvirtual-Setup-*.exe')
+          if ($installers.Count -ne 1) { throw "Esperado um instalador Windows; encontrados $($installers.Count)." }
+          $installer = $installers[0]
+          $hash = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash.ToLowerInvariant()
+          $checksum = "$($installer.FullName).sha256"
+          Set-Content -Path $checksum -Value "$hash  $($installer.Name)" -Encoding ascii
+          gh release upload $env:GITHUB_REF_NAME $installer.FullName $checksum --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Falha publicando o instalador Windows." }

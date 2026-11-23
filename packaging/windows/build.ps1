@@ -1,4 +1,6 @@
-param()
+param(
+    [string]$AppVersion
+)
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
@@ -46,5 +48,12 @@ if (-not $iscc) {
 }
 if (-not $iscc) { throw "Instale Inno Setup 6 para gerar o instalador EXE." }
 
-& $iscc.Source packaging/windows/posvirtual.iss
+if ($AppVersion -and $AppVersion -notmatch '^\d+(\.\d+){1,3}$') {
+    throw "Versão Windows inválida: $AppVersion"
+}
+
+$compilerArgs = @()
+if ($AppVersion) { $compilerArgs += "/DAppVersion=$AppVersion" }
+$compilerArgs += "packaging/windows/posvirtual.iss"
+& $iscc.Source @compilerArgs
 if ($LASTEXITCODE -ne 0) { throw "Falha gerando o instalador Windows." }

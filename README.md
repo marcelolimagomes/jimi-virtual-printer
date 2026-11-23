@@ -36,7 +36,7 @@ Existem dois meios independentes de enviar uma impressão:
 
 Quando gerado pelo workflow, o instalador por usuário `POSvirtual-Setup-0.1.2.exe` instala o servidor e o agente de bandeja. O agente inicia o servidor TCP em `127.0.0.1:9100`, acompanha `%LOCALAPPDATA%\Taskblu\POSvirtual\PDF` e oferece ações para iniciar/parar o servidor, **Abrir PDF mais recente**, ver o **Histórico de PDFs** com data/hora, consultar informações do produto e abrir o site de suporte. Os logs ficam em `%LOCALAPPDATA%\Taskblu\POSvirtual\logs`. No Windows, o transporte implementado é ESC/POS sobre TCP; a integração CUPS/IPP deste repositório é para Ubuntu. O instalador cria atalhos no menu Iniciar e, por padrão, na inicialização da sessão. É possível desmarcar a inicialização automática durante a instalação.
 
-O workflow `.github/workflows/windows-exe.yml` gera o instalador em um runner Windows e publica o `.exe` como artefato da execução. Para gerar localmente, use uma máquina Windows com Python 3.12 e Inno Setup 6:
+O workflow `.github/workflows/windows-exe.yml` publica o `.exe` como artefato de CI. No release marcado, `.github/workflows/release.yml` também gera o instalador com a versão da tag e o anexa ao GitHub Release com checksum SHA-256. Para gerar localmente, use uma máquina Windows com Python 3.12 e Inno Setup 6:
 
 ```powershell
 choco install innosetup --yes
@@ -131,7 +131,7 @@ git tag v0.1.2-1
 git push origin v0.1.2-1
 ```
 
-O workflow `.github/workflows/release.yml` reconstrói e valida o pacote, depois publica `posvirtual_0.1.2-1_all.deb` e `posvirtual_0.1.2-1_all.deb.sha256` nos assets do GitHub Release. O pacote e o checksum podem ser baixados com:
+O workflow `.github/workflows/release.yml` reconstrói e valida o pacote Debian e gera o instalador Windows usando a mesma tag. O GitHub Release recebe `posvirtual_0.1.2-1_all.deb`, `posvirtual_0.1.2-1_all.deb.sha256`, `POSvirtual-Setup-0.1.2.exe` e o checksum `.sha256` do instalador. O pacote Debian e seu checksum podem ser baixados com:
 
 ```bash
 gh release download v0.1.2-1 --pattern 'posvirtual_0.1.2-1_all.deb*'
