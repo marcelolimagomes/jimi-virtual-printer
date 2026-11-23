@@ -53,7 +53,7 @@ if ($AppVersion -and $AppVersion -notmatch '^\d+(\.\d+){1,3}$') {
 }
 
 $compilerArgs = @()
-if ($AppVersion) { $compilerArgs += "/DAppVersion=$AppVersion" }
+if ($AppVersion) { $compilerArgs += "/DAppVersion=`"$AppVersion`"" }
 $compilerArgs += "packaging/windows/posvirtual.iss"
 & $iscc.Source @compilerArgs
 if ($LASTEXITCODE -ne 0) { throw "Falha gerando o instalador Windows." }
