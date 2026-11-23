@@ -107,13 +107,13 @@ jobs:
             throw "Tag $env:RELEASE_TAG precisa corresponder ao changelog: v$env:PACKAGE_VERSION"
           }
           $appVersion = $env:PACKAGE_VERSION -replace '-\d+$', ''
-          $setupScript = Get-Content 'packaging/windows/posvirtual.iss' -Raw
-          $appMatch = [regex]::Match($setupScript, '(?m)^#define AppVersion "([^"]+)"')
-          $fileVersionMatch = [regex]::Match($setupScript, '(?m)^VersionInfoVersion=([0-9.]+)$')
-          if (-not $appMatch.Success -or $appMatch.Groups[1].Value -ne $appVersion) {
+          $setupLines = Get-Content 'packaging/windows/posvirtual.iss'
+          $appVersionLine = $setupLines | Where-Object { $_ -match '^#define AppVersion ' } | Select-Object -First 1
+          $fileVersionLine = $setupLines | Where-Object { $_ -match '^VersionInfoVersion=' } | Select-Object -First 1
+          if ($appVersionLine -ne ('#define AppVersion "' + $appVersion + '"')) {
             throw "AppVersion do instalador precisa ser $appVersion."
           }
-          if (-not $fileVersionMatch.Success -or $fileVersionMatch.Groups[1].Value -ne "$appVersion.0") {
+          if ($fileVersionLine -ne "VersionInfoVersion=$appVersion.0") {
             throw "VersionInfoVersion do instalador precisa ser $appVersion.0."
           }
           ./packaging/windows/build.ps1
