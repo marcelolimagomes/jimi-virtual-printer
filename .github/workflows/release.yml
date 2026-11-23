@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish or complete (for example v0.1.2-1)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,7 +20,8 @@ jobs:
     permissions:
       contents: write
     outputs:
-      package-version: ${{ steps.package.outputs.version }}
+      package_version: ${{ steps.package.outputs.version }}
+      release_tag: ${{ steps.package.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,11 +35,13 @@ jobs:
 
       - name: Build, validate, and smoke-test package
         id: package
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
         run: |
           version="$(dpkg-parsechangelog -S Version)"
-          tag_version="${GITHUB_REF_NAME#v}"
+          tag_version="${RELEASE_TAG#v}"
           if [[ "$tag_version" != "$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME precisa corresponder ao changelog: v$version" >&2
+            echo "Tag $RELEASE_TAG precisa corresponder ao changelog: v$version" >&2
             exit 1
           fi
 
@@ -42,6 +51,7 @@ jobs:
           python3 /usr/libexec/posvirtual/smoke-deb.py artifacts/release
           (cd dist && sha256sum -c "${package##*/}.sha256")
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Publish package and checksum to GitHub Release
         env:
@@ -61,10 +71,11 @@ jobs:
           ~~~
           EOF
 
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$package" "$checksum" --clobber
+          tag="${{ steps.package.outputs.release_tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$package" "$checksum" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "$package" "$checksum" \
+            gh release create "$tag" "$package" "$checksum" \
               --verify-tag \
               --title "Taskblu POSvirtual ${version}" \
               --notes-file "$notes"
@@ -88,19 +99,30 @@ jobs:
       - name: Build installer matching the release tag
         shell: pwsh
         env:
-          PACKAGE_VERSION: ${{ needs.release.outputs.package-version }}
+          PACKAGE_VERSION: ${{ needs.release.outputs.package_version }}
+          RELEASE_TAG: ${{ needs.release.outputs.release_tag }}
         run: |
-          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          $tagVersion = $env:RELEASE_TAG -replace '^v', ''
           if ($tagVersion -ne $env:PACKAGE_VERSION) {
-            throw "Tag $env:GITHUB_REF_NAME precisa corresponder ao changelog: v$env:PACKAGE_VERSION"
+            throw "Tag $env:RELEASE_TAG precisa corresponder ao changelog: v$env:PACKAGE_VERSION"
           }
           $appVersion = $env:PACKAGE_VERSION -replace '-\d+$', ''
-          ./packaging/windows/build.ps1 -AppVersion $appVersion
+          $setupScript = Get-Content 'packaging/windows/posvirtual.iss' -Raw
+          $appMatch = [regex]::Match($setupScript, '(?m)^#define AppVersion "([^"]+)"')
+          $fileVersionMatch = [regex]::Match($setupScript, '(?m)^VersionInfoVersion=([0-9.]+)$')
+          if (-not $appMatch.Success -or $appMatch.Groups[1].Value -ne $appVersion) {
+            throw "AppVersion do instalador precisa ser $appVersion."
+          }
+          if (-not $fileVersionMatch.Success -or $fileVersionMatch.Groups[1].Value -ne "$appVersion.0") {
+            throw "VersionInfoVersion do instalador precisa ser $appVersion.0."
+          }
+          ./packaging/windows/build.ps1
 
       - name: Publish Windows installer and checksum to GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release.outputs.release_tag }}
         run: |
           $installers = @(Get-ChildItem 'dist/windows/installer/POSvirtual-Setup-*.exe')
           if ($installers.Count -ne 1) { throw "Esperado um instalador Windows; encontrados $($installers.Count)." }
@@ -108,5 +130,5 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash.ToLowerInvariant()
           $checksum = "$($installer.FullName).sha256"
           Set-Content -Path $checksum -Value "$hash  $($installer.Name)" -Encoding ascii
-          gh release upload $env:GITHUB_REF_NAME $installer.FullName $checksum --clobber
+          gh release upload $env:RELEASE_TAG $installer.FullName $checksum --clobber
           if ($LASTEXITCODE -ne 0) { throw "Falha publicando o instalador Windows." }
